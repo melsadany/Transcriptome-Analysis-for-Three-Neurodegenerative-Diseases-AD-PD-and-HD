@@ -41,10 +41,14 @@ project.dir <- "/Volumes/Mac/ZC/GP-paper/Transcriptome-Analysis-for-Three-Neurod
 setwd(project.dir)
 ################################################################################
 # read the CMAP signature, and keep FDA-approed drugs only
-fda <- read_delim("../../FDA_approved_Products.txt")
+fda <- read_delim("../../FDA_approved_Products.txt") %>%
+  mutate(DrugName = sub(" ", "-", tolower(DrugName)),
+         ActiveIngredient = sub(" ", "-", tolower(ActiveIngredient)))
 # full CMAP matrix with rows as drug/molecule names and genes as colnames
 pload("../../cp_mean_coeff_mat_tsv.Rdata.pxz")
-fda.mdrug <- mdrug[tolower(rownames(mdrug)) %in% tolower(fda$DrugName),]
+fda.mdrug <- mdrug[c(tolower(rownames(mdrug)) %in% tolower(fda$DrugName)|
+                       tolower(rownames(mdrug)) %in% tolower(fda$ActiveIngredient))
+                   ,]
 # save fda drug matrix
 psave(fda.mdrug, file = "../../cp_mean_coeff_mat_tsv_FDA-only.Rdata.pxz")
 gc()
@@ -112,7 +116,7 @@ d.scores %>%
   geom_point(size=1) +
   scale_color_gradient2(low = redblack.col[2], high = redblack.col[1], 
                         name = "Jaccard Index") +
-  my.guides +
+  guides(color = guide_colorbar(barwidth = 6, barheight = 0.5)) +
   labs(x = "number of UP genes in NDDs and get DOWN by the drug",
        y = "number of DOWN genes in NDDs and get UP by the drug",
        caption = "a positive value in Jaccard Index means the drug has a similar transcriptomic profile to genes' lfc")
@@ -122,8 +126,29 @@ ggsave("Mutual DEGs/Visualization/UD-VS-DU-from-Jaccard-Index.svg",
 # save the calculated Jaccard Index scores for all drugs
 write_csv(d.scores, "Mutual DEGs/computed-jaccard-index-scores.csv")
 ################################################################################
-
-################################################################################
+# heatmap for 5 genes of interest
+genes.of.int <- c("NFKB1", "NFKBIA", "RELA", "TRIM4", "SMAD4")
+drugs.of.int <- d.scores %>%
+  filter(score < -0.1)
+fda.mdrug.filtered[drugs.of.int$drug,] %>%
+  as.data.frame() %>%
+  select(any_of(genes.of.int)) %>%
+  rownames_to_column("drug") %>%
+  pivot_longer(cols = any_of(genes.of.int), names_to = "gene", values_to = "drug_exp") %>%
+  ggplot(aes(x=gene, y=drug, fill=drug_exp))+
+  geom_tile()+
+  scale_fill_gradient2(low = redblack.col[2], high = redblack.col[1])+
+  my.guides+
+  theme(axis.text.x.bottom = element_text(angle = 0, hjust = 0.5))
+ggsave("Mutual DEGs/Visualization/gens-exp-in-drugs-of-int.svg",
+       width = 5, height = 11, units = "in", dpi = 360, bg = "white")
+# mut.genes %>%
+#   filter(gene %in% genes.of.int) %>%
+#   select(gene, ends_with("lfc")) %>%
+#   pivot_longer(cols = c("AD_lfc", "PD_lfc", "HD_lfc"), names_to = "NDD", values_to = "NDD_exp") %>%
+#   mutate(NDD = sub("_lfc", "", NDD)) %>%
+#   left_join(mdrug.filtered.2, relationship = "many-to-many") %>% drop_na()
+# ################################################################################
 
 
 ################################################################################
