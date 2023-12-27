@@ -191,32 +191,42 @@ ggplot(res_table_shrunken_2) +
 ```{r}
 ### Annotate our heatmap (optional)
 annotation2 <- AD_meta %>% 
-	dplyr::select(samplename, SampleType2) %>% 
-	data.frame(row.names = "samplename")
+	dplyr::select(samplename, SampleType2) %>%
+  mutate(SampleType = ifelse(SampleType2 == "Old", "Control", "AD")) %>%
+  arrange(desc(SampleType)) %>%
+  select(samplename, SampleType) %>%
+  column_to_rownames("samplename")
+# levels(annotation2) <- unique(annotation2$SampleType2)
+
+# annot_colors <- list(SampleTyp2=c(AD="#FF9189",Old="#00DBE4"))
+annot_colors <- c("#00DBE4", "#FF9189")
+names(annot_colors) <- unique(annotation2$SampleType)
+annot_colors <- list(SampleType = annot_colors)
 
 vsd <- vst(ADdds)
-
 ### Set a color palette
 heat_colors2 <- brewer.pal(4, "YlOrRd")
 
-genes2 <- c(sigOE[,1])
-genes1 <- genes2[["gene"]]
+genes <- sigOE$gene
 
 ### Run pheatmap
-
-jpeg(file="results/AD_VS._Old_DEGsHeatMaplfc0_MS_210121.png")
-pheatmap(assay(vsd)[genes1, ],
+svg(filename ="results/AD_VS._Old_DEGsHeatMaplfc0_MS_100922.svg")
+tiff(filename = "results/AD_VS._Old_DEGsHeatMaplfc0_MS_100922.tiff", width = 2100, height = 1500, res = 300)
+pheatmap(assay(vsd)[genes, rownames(annotation2)],
          color = heat_colors2, 
-         cluster_rows = T, 
+         cluster_rows = T,
          cluster_cols = F,
-         show_rownames = T,
-         annotation = annotation2, 
-         border_color = NA, 
-         fontsize = 10, 
-         scale = "row", 
-         fontsize_row = 6, 
+         show_rownames = F,
+         annotation_col = annotation2,
+         annotation_colors = annot_colors,
+         annotation_names_col = F,
+         border_color = NA,
+         fontsize = 10,
+         scale = "row", show_rownames = F, show_colnames = F,
+         
+         fontsize_row = 6,
          height = 400)
-#dev.off()
+dev.off()
 
 ```
 

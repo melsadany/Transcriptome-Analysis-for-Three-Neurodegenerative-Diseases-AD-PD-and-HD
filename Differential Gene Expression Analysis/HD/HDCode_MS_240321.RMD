@@ -231,16 +231,17 @@ vsd <- vst(HDdds)
 heat_colors2 <- brewer.pal(4, "YlOrRd")
 
 
-genes1 <- sigOE$gene
+genes <- sigOE$gene
 
 ### Run pheatmap
 
 jpeg(file="results/HD_VS._control_DEGsHeatMaplfc0_MS.png")
-pheatmap(assay(vsd)[genes1, ],
+pheatmap(assay(vsd)[genes, ],
          color = heat_colors2, 
          cluster_rows = T, 
          cluster_cols = F,
-         show_rownames = T,
+         show_rownames = F,
+         show_colnames = F,
          annotation = annotation2, 
          border_color = NA, 
          fontsize = 10, 

@@ -135,7 +135,7 @@ write.csv(sigOE, file="results/PD_VS._control_DEGslfc0.csv")
 ```{r}
 
 df.ensemble.id <- sapply(sigOE$gene, function(x) strsplit(as.character(x),"\\.")[[1]][1])
-  df.in <- cbind(df.ensemble.id, sigOE)
+df.in <- cbind(df.ensemble.id, sigOE)
 
 mapper <- mapIds(org.Hs.eg.db,keys = sigOE$gene, column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
 
@@ -230,17 +230,18 @@ vsd <- vst(PDdds)
 ### Set a color palette
 heat_colors2 <- brewer.pal(4, "YlOrRd")
 
-genes2 <- c(sigOE[,1])
-genes1 <- genes2[["gene"]]
+genes <- sigOE$gene
+
 
 ### Run pheatmap
 
 jpeg(file="results/PD_VS._Control_DEGsHeatMaplfc1.0.png")
-pheatmap(assay(vsd)[genes1, ],
+pheatmap(assay(vsd)[genes, ],
          color = heat_colors2, 
          cluster_rows = T, 
          cluster_cols = F,
-         show_rownames = T,
+         show_rownames = F, 
+         show_colnames = F,
          annotation = annotation2, 
          border_color = NA, 
          fontsize = 10, 
@@ -253,7 +254,27 @@ pheatmap(assay(vsd)[genes1, ],
 
 
 
+### convert normalized counts ENSG gene IDs to gene symbols
+```{r}
 
+df.ensemble.id <- sapply(rownames(PDnormalized_counts), function(x) strsplit(as.character(x),"\\.")[[1]][1])
+df.in <- cbind(df.ensemble.id, PDnormalized_counts)
+
+mapper <- mapIds(org.Hs.eg.db,keys = rownames(PDnormalized_counts), column = "SYMBOL", keytype = "ENSEMBL", multiVals = "first")
+
+mapper.df <- as.data.frame(mapper)
+mapper.df <- cbind(rownames(mapper.df), mapper.df)
+names(mapper.df) <- c("df.ensemble.id", "symbol")
+df.out <- merge(df.in, mapper.df ,by="df.ensemble.id", all.x=TRUE)
+
+sample.names <- rownames(PDmeta)
+PD.n.filt <- df.out %>%
+  drop_na(symbol) %>%
+  # column_to_rownames("df.ensemble.id") %>%
+  dplyr::select(-df.ensemble.id)%>%
+  group_by(symbol) %>%
+  summarise_at(.vars = sample.names, .funs = function(x) mean(x))
+```
 
 
 
