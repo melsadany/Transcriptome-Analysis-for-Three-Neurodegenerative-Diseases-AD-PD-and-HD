@@ -46,13 +46,11 @@ fda <- read_delim("../../FDA_approved_Products.txt") %>%
 # full CMAP matrix with rows as drug/molecule names and genes as colnames
 pload("../../cp_mean_coeff_mat_tsv.Rdata.pxz")
 genes.of.int <- c("NFKB1", "NFKBIA", "RELA", "TRIM4", "SMAD4")
-# z-transform gene expression
-fda.mdrug <- mdrug[,colnames(mdrug)%in%genes.of.int] %>%
-  as.data.frame() %>%
-  mutate_all(.funs = function(x) scale(x, scale = T, center = T)[,1])
 # filter the CMAP data to only keep the FDA approved drugs, and the genes of interest
-fda.mdrug <- fda.mdrug[c(tolower(rownames(mdrug)) %in% tolower(fda$DrugName)|
-                           tolower(rownames(mdrug)) %in% tolower(fda$ActiveIngredient)),]
+fda.mdrug <- mdrug[c(tolower(rownames(mdrug)) %in% tolower(fda$DrugName)|
+                       tolower(rownames(mdrug)) %in% tolower(fda$ActiveIngredient)),
+                   colnames(mdrug)%in%genes.of.int] %>%
+  as.data.frame()
 # save fda drug matrix
 psave(fda.mdrug, file = "../../cp_mean_coeff_mat_tsv_FDA-genes-of-int-only.Rdata.pxz")
 gc()
@@ -79,7 +77,7 @@ fda.mdrug.filtered %>%
   ggplot(aes(x = Gene, y= Drug, fill = value)) +
   geom_tile()+
   scale_fill_gradient2(low = "#3b5998", high = redblack.col[1],
-                       name = "Z-transformed Gene Expression")+
+                       name = "Gene Expression")+
   my.guides +
   theme(axis.text.x.bottom = element_text(angle = 0, hjust = 0.5))
 
