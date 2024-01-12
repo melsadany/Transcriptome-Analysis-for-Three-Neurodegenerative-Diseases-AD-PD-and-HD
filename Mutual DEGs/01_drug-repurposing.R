@@ -34,6 +34,7 @@ psave <- function(...,file){
   con = pipe(paste("/opt/homebrew/bin/pixz -2 -q 80 -f 3 > ",file,".pxz",sep=""),"wb") 
   save(...,file=con,envir=.GlobalEnv); close(con) 
 } 
+redblack.col <- c("#800000", "black")
 ################################################################################
 project.dir <- "/Volumes/Mac/ZC/GP-paper/Transcriptome-Analysis-for-Three-Neurodegenerative-Diseases-AD-PD-and-HD/"
 setwd(project.dir)
@@ -44,11 +45,14 @@ fda <- read_delim("../../FDA_approved_Products.txt") %>%
          ActiveIngredient = sub(" ", "-", tolower(ActiveIngredient)))
 # full CMAP matrix with rows as drug/molecule names and genes as colnames
 pload("../../cp_mean_coeff_mat_tsv.Rdata.pxz")
-# filter the CMAP data to only keep the FDA approved drugs, and the genes of interest
 genes.of.int <- c("NFKB1", "NFKBIA", "RELA", "TRIM4", "SMAD4")
-fda.mdrug <- mdrug[c(tolower(rownames(mdrug)) %in% tolower(fda$DrugName)|
-                       tolower(rownames(mdrug)) %in% tolower(fda$ActiveIngredient)),
-                   colnames(mdrug)%in%genes.of.int]
+# z-transform gene expression
+fda.mdrug <- mdrug[,colnames(mdrug)%in%genes.of.int] %>%
+  as.data.frame() %>%
+  mutate_all(.funs = function(x) scale(x, scale = T, center = T)[,1])
+# filter the CMAP data to only keep the FDA approved drugs, and the genes of interest
+fda.mdrug <- fda.mdrug[c(tolower(rownames(mdrug)) %in% tolower(fda$DrugName)|
+                           tolower(rownames(mdrug)) %in% tolower(fda$ActiveIngredient)),]
 # save fda drug matrix
 psave(fda.mdrug, file = "../../cp_mean_coeff_mat_tsv_FDA-genes-of-int-only.Rdata.pxz")
 gc()
@@ -62,18 +66,25 @@ fda.mdrug.filtered <- fda.mdrug %>%
   mutate(Drug = str_to_sentence(Drug))
 # save the table
 write_csv(fda.mdrug.filtered, file = "Mutual DEGs/top-drugs-downregulating-genes-of-int.csv")
+################################################################################
 # make a heatmap for drugs that can downregulate all genes of interest at the same time
+# keep drugs of interest 
+d.of.int <- readxl::read_xlsx("Mutual DEGs/tagged_top-drugs-downregulating-genes-of-int.xlsx", sheet = 1) %>%
+  mutate(keep = ifelse(keep == "T", T, F)) %>%
+  filter(keep == T)
+
 fda.mdrug.filtered %>%
+  filter(Drug %in% d.of.int$Drug) %>%
   pivot_longer(cols = genes.of.int[c(1:3,5)], names_to = "Gene") %>%
   ggplot(aes(x = Gene, y= Drug, fill = value)) +
   geom_tile()+
   scale_fill_gradient2(low = "#3b5998", high = redblack.col[1],
-                       name = "Gene Expression")+
+                       name = "Z-transformed Gene Expression")+
   my.guides +
   theme(axis.text.x.bottom = element_text(angle = 0, hjust = 0.5))
 
 ggsave("Mutual DEGs/Visualization/gens-exp-of-genes-of-int-in-drug-hits.svg",
-       width = 5, height = 11, units = "in", dpi = 360, bg = "white")
+       width = 5, height = 6, units = "in", dpi = 360, bg = "white")
 ################################################################################
 
 
